@@ -1,34 +1,36 @@
-from math import sin, cos, sqrt
+from functools import partial
 
 import numpy as np
+from scipy.optimize import minimize
 
 from settings import ALPHA
 
 
 class Observation:
-    def __init__(self, position, mass):
-        self.position = position
-        self.mass = mass
+    def __init__(self, r, m):
+        self.r = r
+        self.m = m
 
 
-def prior_preference(x, x_o, m_o):
+def prior_preference(r_o, m_o):
     """事前の選好を計算する。
-    x: 観測者の位置
-    x_o: 観測された物体の位置
+    r_o: 観測された物体の相対位置
     m_o: 観測された物体の質量
     観測された物体の質量が大きいほど、観測者はその物体を近づけるように行動する。
     """
-    return m_o * np.linalg.norm(x - x_o)**2
+    return m_o * np.linalg.norm(r_o)**2
 
 
-def expected_free_energy(x, m, v, x_o, m_o, a):
+def expected_free_energy(
+        _self: 'Particle',
+        obsv: Observation,
+        a: np.ndarray):
     """期待自由エネルギーを計算する"""
-    x_pred = x + a
-
     # 選好
-    preference_term = prior_preference(x_pred, x_o, m_o)
+    preference_term = prior_preference(obsv.r - a, obsv.m)
+
     # 慣性（前回アクションと同じ場合に小さな値を取る）
-    inertia_term = m * np.linalg.norm(v - a)**2
+    inertia_term = _self.mass * np.linalg.norm(_self.action - a)**2
 
     return (1 - ALPHA) * preference_term + ALPHA * inertia_term
 
@@ -38,47 +40,35 @@ class Particle:
         self.position = np.array(position, dtype=float)
         self.action = np.array(v0, dtype=float)
         self.mass = mass
-        self.history = [self.position.copy()]
         self.observations = {}
-        directions = [
-            np.array([cos(theta), sin(theta)])
-            for theta in np.linspace(0, 2 * np.pi, 36, endpoint=False)
-        ]
-        scalars = [
-            s for s in np.linspace(1, 100, 8)
-        ]
-        self.actions = [s * d for s in scalars for d in directions]
 
     def observe(self, others: list['Particle'], noise_std=0.01):
         """観測ノイズを加えて観測する"""
         for other in others:
-            pos_noise = np.random.normal(0, noise_std, size=2)
-            distance = np.linalg.norm(other.position - self.position)
-            mass_noise = np.random.normal(0, sqrt(distance) * noise_std, size=1)
+            # 観測ノイズは距離の平方根に比例する
+            r = other.position - self.position
+            r_norm = np.linalg.norm(r)
+            r_noise = np.random.normal(0, r_norm * noise_std, size=2)
+            m_noise = np.random.normal(0, r_norm * noise_std, size=1)
 
             self.observations[id(other)] = Observation(
-                position=other.position + pos_noise,
-                mass=other.mass + mass_noise,
+                r=r + r_noise,
+                m=other.mass + m_noise,
             )
 
     def choose_action(self):
         total_action = np.zeros(2)
         for observation in self.observations.values():
-            x = self.position
-            m = self.mass
-            v = self.action
-            x_o = observation.position
-            m_o = observation.mass
-            Gs = [expected_free_energy(x, m, v, x_o, m_o, a) for a in self.actions]
+            partial_efe = partial(
+                expected_free_energy,
+                self,
+                observation)
+            res = minimize(partial_efe, [0, 0])
+            action = res.x
 
-            action = self.actions[np.argmin(Gs)]
             total_action += action
 
         self.action = total_action
 
     def act(self, dt):
         self.position += self.action * dt
-        self.history.append(self.position.copy())
-
-    def get_history(self):
-        return np.array(self.history)

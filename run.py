@@ -11,7 +11,9 @@ def main():
     # Pygameの初期化
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("Subjective Mass Estimation and Particle Motion")
+    pygame.display.set_caption(
+        "Subjective Mass Estimation and Particle Motion"
+    )
 
     # 粒子の初期化（太陽と2つの惑星）
     particles = [

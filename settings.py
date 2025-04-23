@@ -18,4 +18,5 @@ WIDTH, HEIGHT = 800, 800
 # シミュレーションパラメータ
 DELTA_T = 0.1
 STEPS = 300
-ALPHA = 0.825
+ALPHA = 0.9875
+NOISE_STD = 0.1
