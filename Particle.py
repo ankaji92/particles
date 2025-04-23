@@ -2,6 +2,14 @@ from math import sin, cos, sqrt
 
 import numpy as np
 
+from settings import ALPHA
+
+
+class Observation:
+    def __init__(self, position, mass):
+        self.position = position
+        self.mass = mass
+
 
 def prior_preference(x, x_o, m_o):
     """事前の選好を計算する。
@@ -15,7 +23,6 @@ def prior_preference(x, x_o, m_o):
 
 def expected_free_energy(x, m, v, x_o, m_o, a):
     """期待自由エネルギーを計算する"""
-    alpha = 0.825
     x_pred = x + a
 
     # 選好
@@ -23,12 +30,11 @@ def expected_free_energy(x, m, v, x_o, m_o, a):
     # 慣性（前回アクションと同じ場合に小さな値を取る）
     inertia_term = m * np.linalg.norm(v - a)**2
 
-    return (1 - alpha) * preference_term + alpha * inertia_term
+    return (1 - ALPHA) * preference_term + ALPHA * inertia_term
 
 
 class Particle:
-    def __init__(self, name, position, v0, mass=1.0):
-        self.name = name
+    def __init__(self, position, v0, mass=1.0):
         self.position = np.array(position, dtype=float)
         self.action = np.array(v0, dtype=float)
         self.mass = mass
@@ -50,10 +56,10 @@ class Particle:
             distance = np.linalg.norm(other.position - self.position)
             mass_noise = np.random.normal(0, sqrt(distance) * noise_std, size=1)
 
-            self.observations[other.name] = {
-                "position": other.position + pos_noise,
-                "mass": other.mass + mass_noise,
-            }
+            self.observations[id(other)] = Observation(
+                position=other.position + pos_noise,
+                mass=other.mass + mass_noise,
+            )
 
     def choose_action(self):
         total_action = np.zeros(2)
@@ -61,8 +67,8 @@ class Particle:
             x = self.position
             m = self.mass
             v = self.action
-            x_o = observation["position"]
-            m_o = observation["mass"]
+            x_o = observation.position
+            m_o = observation.mass
             Gs = [expected_free_energy(x, m, v, x_o, m_o, a) for a in self.actions]
 
             action = self.actions[np.argmin(Gs)]
