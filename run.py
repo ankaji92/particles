@@ -16,17 +16,20 @@ def main():
     )
 
     # 粒子の初期化（太陽と2つの惑星）
+    # 以下のサイトのシミュレーションを参考にした
+    # https://w3e.kanazawa-it.ac.jp/math/physics/category/simulation/central_force/henkan-tex.cgi?target=/math/physics/category/simulation/central_force/universal_gravitation_2body.html&pcview=0
     particles = [
         Particle(
-            position=[-0.5, 0.0],
-            v0=[0.0, -1.0],
-            mass=1.0),
+            position=[-1e11, 0.0],
+            v0=[0.0, -1e3],
+            mass=3e27),
         Particle(
-            position=[0.5, 0.0],
-            v0=[0.0, 1.0],
-            mass=1.0)]
+            position=[6e10, 0.0],
+            v0=[0.0, 6e2],
+            mass=5e27),
+    ]
 
-    world = World(screen, particles)
+    world = World(screen, particles)  #, origin_idx=0)
 
     clock = pygame.time.Clock()
     running = True

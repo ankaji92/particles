@@ -3,7 +3,7 @@ from functools import partial
 import numpy as np
 from scipy.optimize import minimize
 
-from settings import ALPHA
+from settings import ALPHA, G
 
 
 class Observation:
@@ -12,22 +12,14 @@ class Observation:
         self.m = m
 
 
-def prior_preference(r_o, m_o):
-    """事前の選好を計算する。
-    r_o: 観測された物体の相対位置
-    m_o: 観測された物体の質量
-    観測された物体の質量が大きいほど、観測者はその物体を近づけるように行動する。
-    """
-    return m_o * np.linalg.norm(r_o)**2
-
-
 def expected_free_energy(
         _self: 'Particle',
         obsv: Observation,
+        dt: float,
         a: np.ndarray):
     """期待自由エネルギーを計算する"""
     # 選好
-    preference_term = prior_preference(obsv.r - a, obsv.m)
+    preference_term = - _self.mass * obsv.m * G / np.linalg.norm(obsv.r - a * dt)
 
     # 慣性（前回アクションと同じ場合に小さな値を取る）
     inertia_term = _self.mass * np.linalg.norm(_self.action - a)**2
@@ -36,7 +28,11 @@ def expected_free_energy(
 
 
 class Particle:
-    def __init__(self, position, v0, mass=1.0):
+    def __init__(
+            self,
+            position: tuple[float, float],  # 位置 (x, y) (m)
+            v0: tuple[float, float],  # 初速度 (vx, vy) (m/s)
+            mass: float):  # 質量 (kg)
         self.position = np.array(position, dtype=float)
         self.action = np.array(v0, dtype=float)
         self.mass = mass
@@ -49,20 +45,21 @@ class Particle:
             r = other.position - self.position
             r_norm = np.linalg.norm(r)
             r_noise = np.random.normal(0, r_norm * noise_std, size=2)
-            m_noise = np.random.normal(0, r_norm * noise_std, size=1)
+            m_noise = np.random.normal(0, r_norm * noise_std)
 
             self.observations[id(other)] = Observation(
                 r=r + r_noise,
                 m=other.mass + m_noise,
             )
 
-    def choose_action(self):
+    def choose_action(self, dt):
         total_action = np.zeros(2)
         for observation in self.observations.values():
             partial_efe = partial(
                 expected_free_energy,
                 self,
-                observation)
+                observation,
+                dt)
             res = minimize(partial_efe, [0, 0])
             action = res.x
 
