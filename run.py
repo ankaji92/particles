@@ -20,16 +20,16 @@ def main():
     # https://w3e.kanazawa-it.ac.jp/math/physics/category/simulation/central_force/henkan-tex.cgi?target=/math/physics/category/simulation/central_force/universal_gravitation_2body.html&pcview=0
     particles = [
         Particle(
-            position=[-1e11, 0.0],
-            v0=[0.0, -1e3],
-            mass=3e27),
+            position=[0.5, 0.0],
+            v0=[0.0, 1.0],
+            mass=2.0),
         Particle(
-            position=[6e10, 0.0],
-            v0=[0.0, 6e2],
-            mass=5e27),
+            position=[-0.5, 0.0],
+            v0=[0.0, -1.0],
+            mass=2.0),
     ]
 
-    world = World(screen, particles)  #, origin_idx=0)
+    world = World(screen, particles)
 
     clock = pygame.time.Clock()
     running = True
